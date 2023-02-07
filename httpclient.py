@@ -48,10 +48,7 @@ class HTTPClient(object):
         return code
 
     def get_headers(self, data):
-        lines = data.split("\r\n\r\n")[0]
-        lines = lines.split("\r\n")
-        lines.pop(0)
-        headers = "\r\n".join(lines)
+        header = data.split("\r\n\r\n")[0]
         return headers
         # return lines
         # print(data)
@@ -82,19 +79,25 @@ class HTTPClient(object):
         code = 500
         body = ""
         parsed = urllib.parse.urlparse(url)
-        request_data = 'GET ' + parsed.path + \
-            ' HTTP/1.1\r\nHost: '+parsed.netloc+'\r\n\r\n'
+        port = parsed.port
+        if not port:
+            if parsed.scheme == 'https':
+                port = 443
+            else:
+                port = 80
+        if (parsed.query):
+            length = str(len(parsed.query))
+        else:
+            length = str(0)
+        
+        request_data = 'GET /' + parsed.path + \
+            ' HTTP/1.1\r\nHost: '+parsed.netloc + '\r\nContent-Length: ' + length + '\r\nConnection: close\r\n\r\n' + parsed.query
         # connect and send
-        print("#####1111111111111111111")
-        self.connect(parsed.hostname, parsed.port)
-        print('222222222222222222222222')
+        self.connect(parsed.hostname, port)
         self.sendall(request_data)
         # receive data
         response = self.recvall(self.socket)
         code = self.get_code(response)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@")
-        print(code)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@")
         if int(code) != 404:
             body = self.get_body(response)
         self.close()
@@ -117,7 +120,7 @@ class HTTPClient(object):
             length = str(length)
         parsed = urllib.parse.urlparse(url)
         request_data = 'POST ' + parsed.path + \
-            ' HTTP/1.1\r\nHost: '+parsed.netloc+'\r\nContent-Type: application/json\r\n' + \
+            ' HTTP/1.1\r\nHost: '+parsed.netloc + '\r\nContent-Type: application/x-www-form-urlencoded\r\n' + \
             'Content-Length:' + length + '\r\n\r\n' + post_data
         self.connect(parsed.hostname, parsed.port)
         self.sendall(request_data)
